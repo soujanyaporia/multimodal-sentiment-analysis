@@ -4,7 +4,7 @@ Attention-based multimodal fusion for sentiment analysis
 Code for the paper
 
 [Context-Dependent Sentiment Analysis in User-Generated Videos](http://sentic.net/context-dependent-sentiment-analysis-in-user-generated-videos.pdf) (ACL 2017).
-[Context-Dependent Sentiment Analysis in User-Generated Videos](http://sentic.net/context-dependent-sentiment-analysis-in-user-generated-videos.pdf) (ACL 2017).
+
 [Multi-level Multiple Attentions for Contextual Multimodal Sentiment Analysis](https://ieeexplore.ieee.org/abstract/document/8215597/)(ICDM 2017).
 
 ![Alt text](network.jpg?raw=true "Fusion using concatenation (ACL 2017)")
