@@ -7,6 +7,10 @@ Code for the paper
 [Context-Dependent Sentiment Analysis in User-Generated Videos](http://sentic.net/context-dependent-sentiment-analysis-in-user-generated-videos.pdf) (ACL 2017).
 [Multi-level Multiple Attentions for Contextual Multimodal Sentiment Analysis](https://ieeexplore.ieee.org/abstract/document/8215597/)(ICDM 2017).
 
+![Alt text](network.jpg?raw=true "Title")
+![Alt text](network_icdm.jpg?raw=true "Title")
+
+
 ### Dataset
 We provide results on the [MOSI dataset](https://arxiv.org/pdf/1606.06259.pdf)  
 Please cite the creators 
