@@ -24,7 +24,7 @@ python create_data.py
 
 Note: This will create speaker independent train and test splits 
 
-### Running sc-lstm
+### Running the model
 
 Sample command:
 
@@ -33,7 +33,7 @@ With fusion:
 python run.py --unimodal True --fusion True
 python run.py --unimodal False --fusion True
 ```
-Without fusion:
+Without attention-based fusion:
 ```
 python run.py --unimodal True --fusion False
 python run.py --unimodal False --fusion False
