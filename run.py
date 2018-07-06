@@ -3,10 +3,15 @@ import pickle
 import sys
 
 import numpy as np
+
+seed = 1227
+np.random.seed(seed)
 import tensorflow as tf
 from tqdm import tqdm
 
 from model import LSTM_Model
+
+tf.set_random_seed(seed)
 
 unimodal_activations = {}
 
@@ -94,7 +99,7 @@ def multimodal(unimodal_activations, attn_fusion=True):
         with tf.Graph().as_default():
             sess = tf.Session(config=session_conf)
             with sess.as_default():
-                model = LSTM_Model(text_train.shape[1:], 0.001, attn_fusion=attn_fusion, unimodal=False)
+                model = LSTM_Model(text_train.shape[1:], 0.001, attn_fusion=attn_fusion, unimodal=False, seed=seed)
                 sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
 
                 test_feed_dict = {
@@ -148,7 +153,7 @@ def multimodal(unimodal_activations, attn_fusion=True):
                         l.append(loss)
                         a.append(accuracy)
 
-                    print("\t \tEpoch {}:, loss {:g}, acc/mae {:g}".format(epoch, np.average(l), np.average(a)))
+                    print("\t \tEpoch {}:, loss {:g}, accuracy {:g}".format(epoch, np.average(l), np.average(a)))
                     # Evaluation after epoch
                     step, loss, accuracy = sess.run(
                         [model.global_step, model.loss, model.accuracy],
@@ -214,7 +219,8 @@ def unimodal(mode):
         with tf.Graph().as_default():
             sess = tf.Session(config=session_conf)
             with sess.as_default():
-                model = LSTM_Model(train_data.shape[1:], 0.001, attn_fusion=attn_fusion, unimodal=is_unimodal)
+                model = LSTM_Model(train_data.shape[1:], 0.001, attn_fusion=attn_fusion, unimodal=is_unimodal,
+                                   seed=seed)
                 sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
 
                 test_feed_dict = {
@@ -271,7 +277,7 @@ def unimodal(mode):
                         l.append(loss)
                         a.append(accuracy)
 
-                    print("\t \tEpoch {}:, loss {:g}, acc/mae {:g}".format(epoch, np.average(l), np.average(a)))
+                    print("\t \tEpoch {}:, loss {:g}, accuracy {:g}".format(epoch, np.average(l), np.average(a)))
                     # Evaluation after epoch
                     step, loss, accuracy, test_activations = sess.run(
                         [model.global_step, model.loss, model.accuracy, model.inter1],

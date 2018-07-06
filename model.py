@@ -4,7 +4,7 @@ from tensorflow.python.layers.core import Dropout, Dense
 
 
 class LSTM_Model():
-    def __init__(self, input_shape, lr, attn_fusion=True, unimodal=False):
+    def __init__(self, input_shape, lr, attn_fusion=True, unimodal=False, seed=1227):
         if unimodal:
             self.input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], input_shape[1]))
         else:
@@ -15,6 +15,7 @@ class LSTM_Model():
         self.seq_len = tf.placeholder(tf.int32, [None, ], name="seq_len")
         self.y = tf.placeholder(tf.int32, [None, input_shape[0], 2], name="y")
         self.lr = lr
+        self.seed = seed
         self.attn_fusion = attn_fusion
         self.unimodal = unimodal
         self.lstm_dropout = tf.placeholder(tf.float32, name="lstm_dropout")
@@ -26,7 +27,7 @@ class LSTM_Model():
 
     def BiGRU(self, inputs, output_size, name, dropout_keep_rate):
         with tf.variable_scope('rnn_' + name, reuse=tf.AUTO_REUSE):
-            kernel_init = tf.glorot_uniform_initializer(seed=1234, dtype=tf.float32)
+            kernel_init = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
             bias_init = tf.zeros_initializer()
 
             fw_cell = tf.contrib.rnn.GRUCell(output_size, name='gru', reuse=tf.AUTO_REUSE, activation=tf.nn.tanh,
@@ -100,12 +101,17 @@ class LSTM_Model():
 
         gru_output = self.BiGRU(input, 300, 'gru', 1 - self.lstm_dropout)
         inter = Dropout(self.dropout)(gru_output)
+        init = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
         if self.unimodal:
-            self.inter1 = Dense(100, activation=tf.nn.tanh)(inter)
+            self.inter1 = Dense(100, activation=tf.nn.tanh,
+                                kernel_initializer=tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32))(
+                inter)
         else:
-            self.inter1 = Dense(500, activation=tf.nn.relu)(inter)
+            self.inter1 = Dense(500, activation=tf.nn.relu,
+                                kernel_initializer=tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32))(
+                inter)
         inter = Dropout(self.dropout)(self.inter1)
-        self.output = Dense(2)(inter)
+        self.output = Dense(2, kernel_initializer=init)(inter)
         # print('self.output', self.output.get_shape())
         self.preds = tf.nn.softmax(self.output)
 
@@ -128,5 +134,6 @@ class LSTM_Model():
         self.global_step = tf.get_variable(shape=[], initializer=tf.constant_initializer(0), dtype=tf.int32,
                                            name='global_step')
         self._optimizer = tf.train.AdamOptimizer(learning_rate=self.lr, beta1=0.9, beta2=0.999)
+        # self._optimizer = tf.train.AdadeltaOptimizer(learning_rate=1.0, rho=0.95, epsilon=None)
 
         self.train_op = self._optimizer.minimize(self.loss, global_step=self.global_step)
