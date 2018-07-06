@@ -61,22 +61,24 @@ class LSTM_Model():
             output = tf.concat([output_fw, output_bw], axis=-1)
             return output
 
-    def self_attention(self, inputs_a, inputs_v, inputs_t, name, return_alphas=False):
+    def self_attention(self, inputs_a, inputs_v, inputs_t, name):
         """
-        inputs = (B, 3, T, dim)
-        :param inputs:
-        :param name:
-        :param return_alphas:
+
+        :param inputs_a: audio input (B, T, dim)
+        :param inputs_v: video input (B, T, dim)
+        :param inputs_t: text input (B, T, dim)
+        :param name: scope name
         :return:
         """
         inputs_a = tf.expand_dims(inputs_a, axis=1)
         inputs_v = tf.expand_dims(inputs_v, axis=1)
         inputs_t = tf.expand_dims(inputs_t, axis=1)
+        # inputs = (B, 3, T, dim)
         inputs = tf.concat([inputs_a, inputs_v, inputs_t], axis=1)
         t = inputs.get_shape()[2].value
-        shared = True
+        share_param = True
         hidden_size = inputs.shape[-1].value  # D value - hidden size of the RNN layer
-        if shared:
+        if share_param:
             scope_name = 'self_attn'
         else:
             scope_name = 'self_attn' + name
@@ -93,14 +95,9 @@ class LSTM_Model():
                     x_proj = tf.nn.tanh(x_proj)
                 else:
                     x_proj = t_x
-                    # x_proj = inputs
-                # print('x_proj', x_proj.get_shape())
                 u_w = tf.Variable(tf.random_normal([hidden_size, 1], stddev=0.01, seed=1227))
                 x = tf.tensordot(x_proj, u_w, axes=1)
-                # print('x', x.get_shape())
                 alphas = tf.nn.softmax(x, axis=-1)
-                # print('alphas', alphas.get_shape())
-                # output = tf.matmul(alphas, inputs)  # (B, T, 1) * (B, T, 1) => (B, T, D)
                 output = tf.matmul(tf.transpose(t_x, [0, 2, 1]), alphas)
                 output = tf.squeeze(output, -1)
                 outputs.append(output)
@@ -238,8 +235,6 @@ def multimodal(unimodal_activations):
                     test_feed_dict)
                 print("EVAL: epoch {}: step {}, loss {:g}, acc {:g}".format(0, step, loss, accuracy))
 
-                epochs = 100
-                batch_size = 10
                 for epoch in range(epochs):
                     epoch += 1
 
@@ -362,8 +357,6 @@ def unimodal(mode):
                     test_feed_dict)
                 print("EVAL: epoch {}: step {}, loss {:g}, acc {:g}".format(0, step, loss, accuracy))
 
-                epochs = 100
-                batch_size = 10
                 for epoch in range(epochs):
                     epoch += 1
 
@@ -430,9 +423,11 @@ def str2bool(v):
 if __name__ == "__main__":
     argv = sys.argv[1:]
     parser = argparse.ArgumentParser()
-    parser.add_argument("--unimodal", type=str2bool, nargs='?',
-                        const=True, default=False)
+    parser.add_argument("--unimodal", type=str2bool, nargs='?', const=True, default=False)
+    parser.add_argument("--fusion", type=str2bool, nargs='?', const=True, default=False)
     args, _ = parser.parse_known_args(argv)
+    batch_size = 10
+    epochs = 100
 
     if args.unimodal:
 
@@ -449,7 +444,7 @@ if __name__ == "__main__":
     # with open('unimodal.pickle', 'rb') as handle:
     #     unimodal_activations = pickle.load(handle)
 
-    with open('unimodal_old.pickle', 'rb') as handle:
+    with open('unimodal.pickle', 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
         unimodal_activations = u.load()
