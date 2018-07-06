@@ -56,3 +56,8 @@ pages={1033-1038},
 keywords={data mining;feature extraction;image classification;image fusion;learning (artificial intelligence);sentiment analysis;attention-based networks;context learning;contextual information;contextual multimodal sentiment;dynamic feature fusion;multilevel multiple attentions;multimodal sentiment analysis;recurrent model;utterances;videos;Context modeling;Feature extraction;Fuses;Sentiment analysis;Social network services;Videos;Visualization}, 
 doi={10.1109/ICDM.2017.134}, 
 month={Nov},}
+```
+
+### Credits
+
+Soujanya Poria, Gangeshwar Krishnamurthy, Devamanyu Hazarika
