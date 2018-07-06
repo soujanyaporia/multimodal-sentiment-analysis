@@ -28,12 +28,21 @@ Note: This will create speaker independent train and test splits
 
 Sample command:
 
+With fusion:
 ```
-python lstm_tf.py --unimodal True
-python lstm_tf.py --unimodal False
+python run.py --unimodal True --fusion True
+python run.py --unimodal False --fusion True
+```
+Without fusion:
+```
+python run.py --unimodal True --fusion False
+python run.py --unimodal False --fusion False
 ```
 
-Note: Keeping the unimodal flag as True (default False) shall train all unimodal lstms first (level 1 of the network mentioned in the paper)
+Note: 
+1. Keeping the unimodal flag as True (default False) shall train all unimodal lstms first (level 1 of the network mentioned in the paper)
+2. Setting --fusion True applies only to multimodal network.
+
 
 ### Citation 
 

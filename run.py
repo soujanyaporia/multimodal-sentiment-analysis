@@ -4,8 +4,9 @@ import sys
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.layers.core import Dropout, Dense
 from tqdm import tqdm
+
+from model import LSTM_Model
 
 unimodal_activations = {}
 
@@ -27,129 +28,6 @@ def createOneHot(train_label, test_label):
     return train, test
 
 
-class LSTM_Model():
-    def __init__(self, input_shape, lr, attn_fusion=True, unimodal=False):
-        if unimodal:
-            self.input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], input_shape[1]))
-        else:
-            self.a_input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], input_shape[1]))
-            self.v_input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], input_shape[1]))
-            self.t_input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], input_shape[1]))
-        self.mask = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0]))
-        self.seq_len = tf.placeholder(tf.int32, [None, ], name="seq_len")
-        self.y = tf.placeholder(tf.int32, [None, input_shape[0], 2], name="y")
-        self.lr = lr
-        self.attn_fusion = attn_fusion
-        self.unimodal = unimodal
-        self.dropout_keep_rate = tf.placeholder(tf.float32, name="dropout_keep_rate")
-        # Build the model
-        self._build_model_op()
-        # self._build_loss()
-        self._initialize_optimizer()
-
-    def BiLSTM(self, inputs, output_size, name, dropout_keep_rate):
-        with tf.variable_scope('rnn_' + name, reuse=tf.AUTO_REUSE):
-            fw_cell = tf.contrib.rnn.GRUCell(output_size / 2, name='gru', reuse=tf.AUTO_REUSE)
-            fw_cell = tf.contrib.rnn.DropoutWrapper(fw_cell, output_keep_prob=dropout_keep_rate)
-
-            bw_cell = tf.contrib.rnn.GRUCell(output_size / 2, name='gru', reuse=tf.AUTO_REUSE)
-            bw_cell = tf.contrib.rnn.DropoutWrapper(bw_cell, output_keep_prob=dropout_keep_rate)
-
-            output_fw, _ = tf.nn.dynamic_rnn(fw_cell, inputs, sequence_length=self.seq_len, dtype=tf.float32)
-            output_bw, _ = tf.nn.dynamic_rnn(bw_cell, inputs, sequence_length=self.seq_len, dtype=tf.float32)
-
-            output = tf.concat([output_fw, output_bw], axis=-1)
-            return output
-
-    def self_attention(self, inputs_a, inputs_v, inputs_t, name):
-        """
-
-        :param inputs_a: audio input (B, T, dim)
-        :param inputs_v: video input (B, T, dim)
-        :param inputs_t: text input (B, T, dim)
-        :param name: scope name
-        :return:
-        """
-        inputs_a = tf.expand_dims(inputs_a, axis=1)
-        inputs_v = tf.expand_dims(inputs_v, axis=1)
-        inputs_t = tf.expand_dims(inputs_t, axis=1)
-        # inputs = (B, 3, T, dim)
-        inputs = tf.concat([inputs_a, inputs_v, inputs_t], axis=1)
-        t = inputs.get_shape()[2].value
-        share_param = True
-        hidden_size = inputs.shape[-1].value  # D value - hidden size of the RNN layer
-        if share_param:
-            scope_name = 'self_attn'
-        else:
-            scope_name = 'self_attn' + name
-        print(scope_name)
-        inputs = tf.transpose(inputs, [2, 0, 1, 3])
-        with tf.variable_scope(scope_name):
-            outputs = []
-            for x in range(t):
-                t_x = inputs[x, :, :, :]
-                # t_x => B, 3, dim
-                den = True
-                if den:
-                    x_proj = Dense(hidden_size)(t_x)
-                    x_proj = tf.nn.tanh(x_proj)
-                else:
-                    x_proj = t_x
-                u_w = tf.Variable(tf.random_normal([hidden_size, 1], stddev=0.01, seed=1227))
-                x = tf.tensordot(x_proj, u_w, axes=1)
-                alphas = tf.nn.softmax(x, axis=-1)
-                output = tf.matmul(tf.transpose(t_x, [0, 2, 1]), alphas)
-                output = tf.squeeze(output, -1)
-                outputs.append(output)
-                print('output', output.get_shape())
-
-            final_output = tf.stack(outputs, axis=1)
-            print('final_output', final_output.get_shape())
-            return final_output
-
-    def _build_model_op(self):
-        # self attention
-        if self.unimodal:
-            input = self.input
-        else:
-            if self.attn_fusion:
-                input = self.self_attention(self.a_input, self.v_input, self.t_input, '')
-            else:
-                input = tf.concat([self.a_input, self.v_input, self.t_input], axis=-1)
-
-        lstm_output = self.BiLSTM(input, 300, 'lstm', self.dropout_keep_rate)
-        inter = Dropout(self.dropout_keep_rate)(lstm_output)
-        self.inter1 = Dense(100)(inter)
-        inter = Dropout(self.dropout_keep_rate)(self.inter1)
-        self.output = Dense(2)(inter)
-        print('self.output', self.output.get_shape())
-        self.preds = tf.nn.softmax(self.output)
-
-        # To calculate the number correct, we want to count padded steps as incorrect
-        correct = tf.cast(
-            tf.equal(tf.argmax(self.preds, -1, output_type=tf.int32), tf.argmax(self.y, -1, output_type=tf.int32)),
-            tf.int32) * tf.cast(self.mask, tf.int32)
-
-        # To calculate accuracy we want to divide by the number of non-padded time-steps,
-        # rather than taking the mean
-        self.accuracy = tf.reduce_sum(tf.cast(correct, tf.float32)) / tf.reduce_sum(tf.cast(self.seq_len, tf.float32))
-        print(self.output.shape)
-        print(self.y.shape)
-        y = tf.argmax(self.y, -1)
-        print(y.shape)
-
-        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.output, labels=y)
-        loss = loss * self.mask
-
-        self.loss = tf.reduce_sum(loss) / tf.reduce_sum(self.mask)
-
-    def _initialize_optimizer(self):
-        self.global_step = tf.get_variable(shape=[], initializer=tf.constant_initializer(0), dtype=tf.int32,
-                                           name='global_step')
-        self._optimizer = tf.train.AdamOptimizer(learning_rate=self.lr, beta1=0.9, beta2=0.999)
-        self.train_op = self._optimizer.minimize(self.loss, global_step=self.global_step)
-
-
 def batch_iter(data, batch_size, shuffle=True):
     """
     Generates a batch iterator for a dataset.
@@ -169,8 +47,9 @@ def batch_iter(data, batch_size, shuffle=True):
         yield shuffled_data[start_index:end_index]
 
 
-def multimodal(unimodal_activations):
-    attn_fusion = True
+def multimodal(unimodal_activations, attn_fusion=True):
+    if attn_fusion:
+        print('With attention fusion')
     print("starting multimodal")
     # Fusion (appending) of features
 
@@ -225,8 +104,10 @@ def multimodal(unimodal_activations):
                     model.y: test_label,
                     model.seq_len: seqlen_test,
                     model.mask: test_mask,
-                    model.dropout_keep_rate: 1.0
+                    model.lstm_dropout: 0.0,
+                    model.dropout: 0.0
                 }
+
                 # print('\n\nDataset: %s' % (data))
                 print("\nEvaluation before training:")
                 # Evaluation after epoch
@@ -257,7 +138,8 @@ def multimodal(unimodal_activations):
                             model.y: b_train_label,
                             model.seq_len: b_seqlen_train,
                             model.mask: b_train_mask,
-                            model.dropout_keep_rate: 0.6
+                            model.lstm_dropout: 0.6,
+                            model.dropout: 0.9
                         }
 
                         _, step, loss, accuracy = sess.run(
@@ -340,14 +222,16 @@ def unimodal(mode):
                     model.y: test_label,
                     model.seq_len: seqlen_test,
                     model.mask: test_mask,
-                    model.dropout_keep_rate: 1.0
+                    model.lstm_dropout: 0.0,
+                    model.dropout: 0.0
                 }
                 train_feed_dict = {
                     model.input: train_data,
                     model.y: train_label,
                     model.seq_len: seqlen_train,
                     model.mask: train_mask,
-                    model.dropout_keep_rate: 1.0
+                    model.lstm_dropout: 0.0,
+                    model.dropout: 0.0
                 }
                 # print('\n\nDataset: %s' % (data))
                 print("\nEvaluation before training:")
@@ -377,7 +261,8 @@ def unimodal(mode):
                             model.y: b_train_label,
                             model.seq_len: b_seqlen_train,
                             model.mask: b_train_mask,
-                            model.dropout_keep_rate: 0.6
+                            model.lstm_dropout: 0.6,
+                            model.dropout: 0.9,
                         }
 
                         _, step, loss, accuracy = sess.run(
@@ -427,7 +312,7 @@ if __name__ == "__main__":
     parser.add_argument("--fusion", type=str2bool, nargs='?', const=True, default=False)
     args, _ = parser.parse_known_args(argv)
     batch_size = 10
-    epochs = 100
+    epochs = 200
 
     if args.unimodal:
 
@@ -449,4 +334,4 @@ if __name__ == "__main__":
         u.encoding = 'latin1'
         unimodal_activations = u.load()
 
-    multimodal(unimodal_activations)
+    multimodal(unimodal_activations, args.fusion)
