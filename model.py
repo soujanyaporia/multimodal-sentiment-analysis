@@ -4,7 +4,7 @@ from tensorflow.python.layers.core import Dropout, Dense
 
 
 class LSTM_Model():
-    def __init__(self, input_shape, lr, attn_fusion=True, unimodal=False, seed=1227):
+    def __init__(self, input_shape, lr, attn_fusion=True, unimodal=False, seed=1234):
         if unimodal:
             self.input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], input_shape[1]))
         else:
@@ -78,7 +78,7 @@ class LSTM_Model():
                     x_proj = tf.nn.tanh(x_proj)
                 else:
                     x_proj = t_x
-                u_w = tf.Variable(tf.random_normal([hidden_size, 1], stddev=0.01, seed=1227))
+                u_w = tf.Variable(tf.random_normal([hidden_size, 1], stddev=0.01, seed=1234))
                 x = tf.tensordot(x_proj, u_w, axes=1)
                 alphas = tf.nn.softmax(x, axis=-1)
                 output = tf.matmul(tf.transpose(t_x, [0, 2, 1]), alphas)
@@ -101,14 +101,14 @@ class LSTM_Model():
 
         gru_output = self.BiGRU(input, 300, 'gru', 1 - self.lstm_dropout)
         inter = Dropout(self.dropout)(gru_output)
-        init = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
+        init = tf.random_normal_initializer(seed=self.seed, dtype=tf.float32)
         if self.unimodal:
             self.inter1 = Dense(100, activation=tf.nn.tanh,
-                                kernel_initializer=tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32))(
+                                kernel_initializer=init)(
                 inter)
         else:
             self.inter1 = Dense(500, activation=tf.nn.relu,
-                                kernel_initializer=tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32))(
+                                kernel_initializer=init)(
                 inter)
         inter = Dropout(self.dropout)(self.inter1)
         self.output = Dense(2, kernel_initializer=init)(inter)
@@ -133,7 +133,7 @@ class LSTM_Model():
     def _initialize_optimizer(self):
         self.global_step = tf.get_variable(shape=[], initializer=tf.constant_initializer(0), dtype=tf.int32,
                                            name='global_step')
-        self._optimizer = tf.train.AdamOptimizer(learning_rate=self.lr, beta1=0.9, beta2=0.999)
-        # self._optimizer = tf.train.AdadeltaOptimizer(learning_rate=1.0, rho=0.95, epsilon=None)
+        #self._optimizer = tf.train.AdamOptimizer(learning_rate=self.lr, beta1=0.9, beta2=0.999)
+        self._optimizer = tf.train.AdadeltaOptimizer(learning_rate=1.0, rho=0.95, epsilon=1e-08)
 
         self.train_op = self._optimizer.minimize(self.loss, global_step=self.global_step)

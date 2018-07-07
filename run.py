@@ -4,7 +4,8 @@ import sys
 
 import numpy as np
 
-seed = 1227
+seed = 1234
+
 np.random.seed(seed)
 import tensorflow as tf
 from tqdm import tqdm
@@ -97,6 +98,7 @@ def multimodal(unimodal_activations, attn_fusion=True):
     with tf.device('/device:GPU:%d' % gpu_device):
         print('Using GPU - ', '/device:GPU:%d' % gpu_device)
         with tf.Graph().as_default():
+            tf.set_random_seed(seed)
             sess = tf.Session(config=session_conf)
             with sess.as_default():
                 model = LSTM_Model(text_train.shape[1:], 0.001, attn_fusion=attn_fusion, unimodal=False, seed=seed)
@@ -318,7 +320,7 @@ if __name__ == "__main__":
     parser.add_argument("--fusion", type=str2bool, nargs='?', const=True, default=False)
     args, _ = parser.parse_known_args(argv)
     batch_size = 10
-    epochs = 200
+    epochs = 60
 
     if args.unimodal:
 
@@ -335,7 +337,7 @@ if __name__ == "__main__":
     # with open('unimodal.pickle', 'rb') as handle:
     #     unimodal_activations = pickle.load(handle)
 
-    with open('unimodal.pickle', 'rb') as handle:
+    with open('unimodal-old.pickle', 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
         unimodal_activations = u.load()
