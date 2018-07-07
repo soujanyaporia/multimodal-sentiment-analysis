@@ -160,7 +160,7 @@ def multimodal(unimodal_activations, attn_fusion=True):
                     step, loss, accuracy = sess.run(
                         [model.global_step, model.loss, model.accuracy],
                         test_feed_dict)
-                    print("EVAL: After epoch {}: step {}, loss {:g}, acc {:g}".format(epoch, step, loss, accuracy))
+                    print("EVAL: After epoch {}: step {}, loss {:g}, acc {:g}".format(epoch, step, loss/test_label.shape[0], accuracy))
 
                     if accuracy > best_acc:
                         best_epoch = epoch
@@ -337,7 +337,7 @@ if __name__ == "__main__":
     # with open('unimodal.pickle', 'rb') as handle:
     #     unimodal_activations = pickle.load(handle)
 
-    with open('unimodal-old.pickle', 'rb') as handle:
+    with open('unimodal.pickle', 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
         unimodal_activations = u.load()
