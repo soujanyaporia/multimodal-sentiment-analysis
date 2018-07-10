@@ -33,7 +33,36 @@ def createOneHot(train_label, test_label):
 
     return train, test
 
-def createOneHotMosei(train_label, test_label):
+def createOneHotMosei3way(train_label, test_label):
+    maxlen = 2
+    #print(maxlen)
+
+    train = np.zeros((train_label.shape[0], train_label.shape[1], maxlen + 1))
+    test = np.zeros((test_label.shape[0], test_label.shape[1], maxlen + 1))
+
+    for i in range(train_label.shape[0]):
+        for j in range(train_label.shape[1]):
+            if train_label[i,j] > 0:
+                train[i, j, 1] = 1
+            else:
+                if train_label[i,j] < 0:
+                    train[i,j,0] = 1
+                else:
+                    if train_label[i,j] == 0:
+                        train[i,j,2] = 1
+
+    for i in range(test_label.shape[0]):
+        for j in range(test_label.shape[1]):
+            if test_label[i,j] > 0:
+                test[i,j,1] = 1
+            else:
+                if test_label[i,j] <0:
+                    test[i,j,0] = 1
+                else:
+                    if test_label[i,j] == 0:
+                        test[i,j,2]= 1
+    return train, test
+def createOneHotMosei2way(train_label, test_label):
     maxlen = 1
     #print(maxlen)
 
@@ -42,17 +71,20 @@ def createOneHotMosei(train_label, test_label):
 
     for i in range(train_label.shape[0]):
         for j in range(train_label.shape[1]):
-            if train_label[i,j] >=0:
+            if train_label[i,j] > 0:
                 train[i, j, 1] = 1
-            elif train_label[i,j] < 0:
-                train[i,j,0] = 1
+            else:
+                if train_label[i,j] <= 0:
+                    train[i,j,0] = 1
 
     for i in range(test_label.shape[0]):
         for j in range(test_label.shape[1]):
-            if test_label[i,j] >= 0:
+            if test_label[i,j] > 0:
                 test[i,j,1] = 1
-            elif test_label[i,j] <0:
-                test[i,j,0] = 1
+            else:
+                if test_label[i,j] <= 0:
+                    test[i,j,0] = 1
+
     return train, test
 
 def batch_iter(data, batch_size, shuffle=True):
@@ -221,7 +253,7 @@ def unimodal(mode):
     for i in range(len(test_length)):
         test_mask[i, :test_length[i]] = 1.0
 
-    train_label, test_label = createOneHotMosei(train_label, test_label)
+    train_label, test_label = createOneHotMosei2way(train_label, test_label)
 
 
     attn_fusion = False
