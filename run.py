@@ -33,6 +33,27 @@ def createOneHot(train_label, test_label):
 
     return train, test
 
+def createOneHotMosei(train_label, test_label):
+    maxlen = 1
+    #print(maxlen)
+
+    train = np.zeros((train_label.shape[0], train_label.shape[1], maxlen + 1))
+    test = np.zeros((test_label.shape[0], test_label.shape[1], maxlen + 1))
+
+    for i in range(train_label.shape[0]):
+        for j in range(train_label.shape[1]):
+            if train_label[i,j] >=0:
+                train[i, j, 1] = 1
+            elif train_label[i,j] < 0:
+                train[i,j,0] = 1
+
+    for i in range(test_label.shape[0]):
+        for j in range(test_label.shape[1]):
+            if test_label[i,j] >= 0:
+                test[i,j,1] = 1
+            elif test_label[i,j] <0:
+                test[i,j,0] = 1
+    return train, test
 
 def batch_iter(data, batch_size, shuffle=True):
     """
@@ -94,7 +115,10 @@ def multimodal(unimodal_activations, attn_fusion=True):
         gpu_options=tf.GPUOptions(allow_growth=True))
     gpu_device = 0
     best_acc = 0
+    best_loss_accuracy = 0
+    best_loss = 10000000.0
     best_epoch = 0
+    best_epoch_loss = 0
     with tf.device('/device:GPU:%d' % gpu_device):
         print('Using GPU - ', '/device:GPU:%d' % gpu_device)
         with tf.Graph().as_default():
@@ -165,17 +189,23 @@ def multimodal(unimodal_activations, attn_fusion=True):
                     if accuracy > best_acc:
                         best_epoch = epoch
                         best_acc = accuracy
+                    if loss < best_loss:
+                        best_loss = loss
+                        best_loss_accuracy = accuracy
+                        best_epoch_loss = epoch
 
-                print("\n\nBest epoch: {}\nBest test accuracy: {}".format(best_epoch, best_acc))
+                print("\n\nBest epoch: {}\nBest test accuracy: {}\nBest epoch loss: {}\nBest test accuracy when loss is least: {}".format(best_epoch, best_acc, best_epoch_loss, best_loss_accuracy))
 
 
 def unimodal(mode):
     print(('starting unimodal ', mode))
 
-    with open('./input/' + mode + '.pickle', 'rb') as handle:
+    #with open('./mosei/text_glove_average.pickle','rb') as handle:
+    with open('./mosei/' + mode + '.pickle', 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
-        (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
+        #(train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
+        (train_data, train_label,_,_, test_data, test_label, _, train_length,_, test_length, _, _, _) = u.load()
 
     # with open('./input/' + mode + '.pickle', 'rb') as handle:
     #     (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = pickle.load(handle)
@@ -191,7 +221,8 @@ def unimodal(mode):
     for i in range(len(test_length)):
         test_mask[i, :test_length[i]] = 1.0
 
-    train_label, test_label = createOneHot(train_label, test_label)
+    train_label, test_label = createOneHotMosei(train_label, test_label)
+
 
     attn_fusion = False
 
@@ -215,10 +246,13 @@ def unimodal(mode):
     gpu_device = 0
     best_acc = 0
     best_epoch = 0
+    best_loss = 1000000.0
+    best_epoch_loss = 0
     is_unimodal = True
     with tf.device('/device:GPU:%d' % gpu_device):
         print('Using GPU - ', '/device:GPU:%d' % gpu_device)
         with tf.Graph().as_default():
+            tf.set_random_seed(seed)
             sess = tf.Session(config=session_conf)
             with sess.as_default():
                 model = LSTM_Model(train_data.shape[1:], 0.001, attn_fusion=attn_fusion, unimodal=is_unimodal,
@@ -284,15 +318,15 @@ def unimodal(mode):
                     step, loss, accuracy, test_activations = sess.run(
                         [model.global_step, model.loss, model.accuracy, model.inter1],
                         test_feed_dict)
+                    loss = loss/test_label.shape[0]
                     print("EVAL: After epoch {}: step {}, loss {:g}, acc {:g}".format(epoch, step, loss, accuracy))
 
                     if accuracy > best_acc:
                         best_epoch = epoch
                         best_acc = accuracy
-
                         step, loss, accuracy, train_activations = sess.run(
-                            [model.global_step, model.loss, model.accuracy, model.inter1],
-                            train_feed_dict)
+                        [model.global_step, model.loss, model.accuracy, model.inter1],
+                        train_feed_dict)
                         unimodal_activations[mode + '_train'] = train_activations
                         unimodal_activations[mode + '_test'] = test_activations
 
@@ -301,7 +335,22 @@ def unimodal(mode):
                         unimodal_activations['train_label'] = train_label
                         unimodal_activations['test_label'] = test_label
 
+                    if loss < best_loss:
+                        best_epoch_loss = epoch
+                        best_loss = loss
+                        #step, loss, accuracy, train_activations = sess.run(
+                        #[model.global_step, model.loss, model.accuracy, model.inter1],
+                        #train_feed_dict)
+                        #unimodal_activations[mode + '_train'] = train_activations
+                        #unimodal_activations[mode + '_test'] = test_activations
+
+                        #unimodal_activations['train_mask'] = train_mask
+                        #unimodal_activations['test_mask'] = test_mask
+                        #unimodal_activations['train_label'] = train_label
+                        #unimodal_activations['test_label'] = test_label
+
                 print("\n\nBest epoch: {}\nBest test accuracy: {}".format(best_epoch, best_acc))
+                print("\n\nBest epoch: {}\nBest test loss: {}".format(best_epoch_loss, best_loss))
 
 
 def str2bool(v):
@@ -316,17 +365,20 @@ def str2bool(v):
 if __name__ == "__main__":
     argv = sys.argv[1:]
     parser = argparse.ArgumentParser()
-    parser.add_argument("--unimodal", type=str2bool, nargs='?', const=True, default=False)
+    parser.add_argument("--unimodal", type=str2bool, nargs='?', const=True, default=True)
     parser.add_argument("--fusion", type=str2bool, nargs='?', const=True, default=False)
     args, _ = parser.parse_known_args(argv)
-    batch_size = 10
-    epochs = 60
+
+    print(args)
+
+    batch_size = 20
+    epochs = 25
 
     if args.unimodal:
 
         print("Training unimodals first")
 
-        modality = ['text', 'audio', 'video']
+        modality = ['text','audio', 'video']
         for mode in modality:
             unimodal(mode)
 
@@ -337,7 +389,7 @@ if __name__ == "__main__":
     # with open('unimodal.pickle', 'rb') as handle:
     #     unimodal_activations = pickle.load(handle)
 
-    with open('unimodal.pickle', 'rb') as handle:
+    with open('unimodal-iemocap-6-classes2.pickle', 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
         unimodal_activations = u.load()
