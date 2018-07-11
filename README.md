@@ -1,4 +1,4 @@
-# att-fusion
+# Attention-based multimodal fusion for sentiment analysis
 Attention-based multimodal fusion for sentiment analysis
 
 Code for the paper
