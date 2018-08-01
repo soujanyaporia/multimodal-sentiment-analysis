@@ -233,7 +233,7 @@ def unimodal(mode):
     print(('starting unimodal ', mode))
 
     #with open('./mosei/text_glove_average.pickle','rb') as handle:
-    with open('./mosei/' + mode + '.pickle', 'rb') as handle:
+    with open('./input/' + mode + '.pickle', 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
         #(train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
