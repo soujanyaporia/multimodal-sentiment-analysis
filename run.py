@@ -33,59 +33,63 @@ def createOneHot(train_label, test_label):
 
     return train, test
 
+
 def createOneHotMosei3way(train_label, test_label):
     maxlen = 2
-    #print(maxlen)
+    # print(maxlen)
 
     train = np.zeros((train_label.shape[0], train_label.shape[1], maxlen + 1))
     test = np.zeros((test_label.shape[0], test_label.shape[1], maxlen + 1))
 
     for i in range(train_label.shape[0]):
         for j in range(train_label.shape[1]):
-            if train_label[i,j] > 0:
+            if train_label[i, j] > 0:
                 train[i, j, 1] = 1
             else:
-                if train_label[i,j] < 0:
-                    train[i,j,0] = 1
+                if train_label[i, j] < 0:
+                    train[i, j, 0] = 1
                 else:
-                    if train_label[i,j] == 0:
-                        train[i,j,2] = 1
+                    if train_label[i, j] == 0:
+                        train[i, j, 2] = 1
 
     for i in range(test_label.shape[0]):
         for j in range(test_label.shape[1]):
-            if test_label[i,j] > 0:
-                test[i,j,1] = 1
+            if test_label[i, j] > 0:
+                test[i, j, 1] = 1
             else:
-                if test_label[i,j] <0:
-                    test[i,j,0] = 1
+                if test_label[i, j] < 0:
+                    test[i, j, 0] = 1
                 else:
-                    if test_label[i,j] == 0:
-                        test[i,j,2]= 1
+                    if test_label[i, j] == 0:
+                        test[i, j, 2] = 1
     return train, test
+
+
 def createOneHotMosei2way(train_label, test_label):
     maxlen = 1
-    #print(maxlen)
+    # print(maxlen)
 
     train = np.zeros((train_label.shape[0], train_label.shape[1], maxlen + 1))
     test = np.zeros((test_label.shape[0], test_label.shape[1], maxlen + 1))
 
     for i in range(train_label.shape[0]):
         for j in range(train_label.shape[1]):
-            if train_label[i,j] > 0:
+            if train_label[i, j] > 0:
                 train[i, j, 1] = 1
             else:
-                if train_label[i,j] <= 0:
-                    train[i,j,0] = 1
+                if train_label[i, j] <= 0:
+                    train[i, j, 0] = 1
 
     for i in range(test_label.shape[0]):
         for j in range(test_label.shape[1]):
-            if test_label[i,j] > 0:
-                test[i,j,1] = 1
+            if test_label[i, j] > 0:
+                test[i, j, 1] = 1
             else:
-                if test_label[i,j] <= 0:
-                    test[i,j,0] = 1
+                if test_label[i, j] <= 0:
+                    test[i, j, 0] = 1
 
     return train, test
+
 
 def batch_iter(data, batch_size, shuffle=True):
     """
@@ -106,7 +110,7 @@ def batch_iter(data, batch_size, shuffle=True):
         yield shuffled_data[start_index:end_index]
 
 
-def multimodal(unimodal_activations, attn_fusion=True):
+def multimodal(unimodal_activations, attn_fusion=True, enable_attn_2=False):
     if attn_fusion:
         print('With attention fusion')
     print("starting multimodal")
@@ -157,7 +161,9 @@ def multimodal(unimodal_activations, attn_fusion=True):
             tf.set_random_seed(seed)
             sess = tf.Session(config=session_conf)
             with sess.as_default():
-                model = LSTM_Model(text_train.shape[1:], 0.001, attn_fusion=attn_fusion, unimodal=False, seed=seed)
+                model = LSTM_Model(text_train.shape[1:], 0.001, emotions=emotions, attn_fusion=attn_fusion,
+                                   unimodal=False, enable_attn_2=enable_attn_2,
+                                   seed=seed)
                 sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
 
                 test_feed_dict = {
@@ -168,6 +174,7 @@ def multimodal(unimodal_activations, attn_fusion=True):
                     model.seq_len: seqlen_test,
                     model.mask: test_mask,
                     model.lstm_dropout: 0.0,
+                    model.lstm_inp_dropout: 0.0,
                     model.dropout: 0.0
                 }
 
@@ -202,6 +209,7 @@ def multimodal(unimodal_activations, attn_fusion=True):
                             model.seq_len: b_seqlen_train,
                             model.mask: b_train_mask,
                             model.lstm_dropout: 0.6,
+                            model.lstm_inp_dropout: 0.4,
                             model.dropout: 0.9
                         }
 
@@ -216,7 +224,9 @@ def multimodal(unimodal_activations, attn_fusion=True):
                     step, loss, accuracy = sess.run(
                         [model.global_step, model.loss, model.accuracy],
                         test_feed_dict)
-                    print("EVAL: After epoch {}: step {}, loss {:g}, acc {:g}".format(epoch, step, loss/test_label.shape[0], accuracy))
+                    print("EVAL: After epoch {}: step {}, loss {:g}, acc {:g}".format(epoch, step,
+                                                                                      loss / test_label.shape[0],
+                                                                                      accuracy))
 
                     if accuracy > best_acc:
                         best_epoch = epoch
@@ -226,18 +236,20 @@ def multimodal(unimodal_activations, attn_fusion=True):
                         best_loss_accuracy = accuracy
                         best_epoch_loss = epoch
 
-                print("\n\nBest epoch: {}\nBest test accuracy: {}\nBest epoch loss: {}\nBest test accuracy when loss is least: {}".format(best_epoch, best_acc, best_epoch_loss, best_loss_accuracy))
+                print(
+                    "\n\nBest epoch: {}\nBest test accuracy: {}\nBest epoch loss: {}\nBest test accuracy when loss is least: {}".format(
+                        best_epoch, best_acc, best_epoch_loss, best_loss_accuracy))
 
 
 def unimodal(mode):
     print(('starting unimodal ', mode))
 
-    #with open('./mosei/text_glove_average.pickle','rb') as handle:
-    with open('./mosei/' + mode + '.pickle', 'rb') as handle:
+    # with open('./mosei/text_glove_average.pickle', 'rb') as handle:
+    with open('./mosei/2way/2-way-' + mode + '.pickle', 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
-        #(train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
-        (train_data, train_label,_,_, test_data, test_label, _, train_length,_, test_length, _, _, _) = u.load()
+        # (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
+        (train_data, train_label, _, _, test_data, test_label, _, train_length, _, test_length, _, _, _) = u.load()
 
     # with open('./input/' + mode + '.pickle', 'rb') as handle:
     #     (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = pickle.load(handle)
@@ -253,8 +265,7 @@ def unimodal(mode):
     for i in range(len(test_length)):
         test_mask[i, :test_length[i]] = 1.0
 
-    train_label, test_label = createOneHotMosei2way(train_label, test_label)
-
+    train_label, test_label = createOneHotMosei3way(train_label, test_label)
 
     attn_fusion = False
 
@@ -287,8 +298,8 @@ def unimodal(mode):
             tf.set_random_seed(seed)
             sess = tf.Session(config=session_conf)
             with sess.as_default():
-                model = LSTM_Model(train_data.shape[1:], 0.001, attn_fusion=attn_fusion, unimodal=is_unimodal,
-                                   seed=seed)
+                model = LSTM_Model(train_data.shape[1:], 0.001, emotions=emotions, attn_fusion=attn_fusion,
+                                   unimodal=is_unimodal, seed=seed)
                 sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
 
                 test_feed_dict = {
@@ -335,8 +346,8 @@ def unimodal(mode):
                             model.y: b_train_label,
                             model.seq_len: b_seqlen_train,
                             model.mask: b_train_mask,
-                            model.lstm_dropout: 0.6,
-                            model.dropout: 0.9,
+                            model.lstm_dropout: 0.5,
+                            model.dropout: 0.3,
                         }
 
                         _, step, loss, accuracy = sess.run(
@@ -350,15 +361,15 @@ def unimodal(mode):
                     step, loss, accuracy, test_activations = sess.run(
                         [model.global_step, model.loss, model.accuracy, model.inter1],
                         test_feed_dict)
-                    loss = loss/test_label.shape[0]
+                    loss = loss / test_label.shape[0]
                     print("EVAL: After epoch {}: step {}, loss {:g}, acc {:g}".format(epoch, step, loss, accuracy))
 
                     if accuracy > best_acc:
                         best_epoch = epoch
                         best_acc = accuracy
                         step, loss, accuracy, train_activations = sess.run(
-                        [model.global_step, model.loss, model.accuracy, model.inter1],
-                        train_feed_dict)
+                            [model.global_step, model.loss, model.accuracy, model.inter1],
+                            train_feed_dict)
                         unimodal_activations[mode + '_train'] = train_activations
                         unimodal_activations[mode + '_test'] = test_activations
 
@@ -370,16 +381,16 @@ def unimodal(mode):
                     if loss < best_loss:
                         best_epoch_loss = epoch
                         best_loss = loss
-                        #step, loss, accuracy, train_activations = sess.run(
-                        #[model.global_step, model.loss, model.accuracy, model.inter1],
-                        #train_feed_dict)
-                        #unimodal_activations[mode + '_train'] = train_activations
-                        #unimodal_activations[mode + '_test'] = test_activations
+                        # step, loss, accuracy, train_activations = sess.run(
+                        # [model.global_step, model.loss, model.accuracy, model.inter1],
+                        # train_feed_dict)
+                        # unimodal_activations[mode + '_train'] = train_activations
+                        # unimodal_activations[mode + '_test'] = test_activations
 
-                        #unimodal_activations['train_mask'] = train_mask
-                        #unimodal_activations['test_mask'] = test_mask
-                        #unimodal_activations['train_label'] = train_label
-                        #unimodal_activations['test_label'] = test_label
+                        # unimodal_activations['train_mask'] = train_mask
+                        # unimodal_activations['test_mask'] = test_mask
+                        # unimodal_activations['train_label'] = train_label
+                        # unimodal_activations['test_label'] = test_label
 
                 print("\n\nBest epoch: {}\nBest test accuracy: {}".format(best_epoch, best_acc))
                 print("\n\nBest epoch: {}\nBest test loss: {}".format(best_epoch_loss, best_loss))
@@ -399,31 +410,33 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--unimodal", type=str2bool, nargs='?', const=True, default=True)
     parser.add_argument("--fusion", type=str2bool, nargs='?', const=True, default=False)
+    parser.add_argument("--attention_2", type=str2bool, nargs='?', const=True, default=False)
     args, _ = parser.parse_known_args(argv)
 
     print(args)
 
     batch_size = 20
-    epochs = 25
+    epochs = 100
+    emotions = 2
 
     if args.unimodal:
 
         print("Training unimodals first")
 
-        modality = ['text','audio', 'video']
+        modality = ['text', 'audio', 'video']
         for mode in modality:
             unimodal(mode)
 
         print("Saving unimodal activations")
-        with open('unimodal.pickle', 'wb') as handle:
+        with open('unimodal_new.pickle', 'wb') as handle:
             pickle.dump(unimodal_activations, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     # with open('unimodal.pickle', 'rb') as handle:
     #     unimodal_activations = pickle.load(handle)
 
-    with open('unimodal-iemocap-6-classes2.pickle', 'rb') as handle:
+    with open('unimodal.pickle', 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
         unimodal_activations = u.load()
 
-    multimodal(unimodal_activations, args.fusion)
+    multimodal(unimodal_activations, args.fusion, args.attention_2)
