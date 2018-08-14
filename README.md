@@ -38,7 +38,11 @@ Without attention-based fusion:
 python run.py --unimodal True --fusion False
 python run.py --unimodal False --fusion False
 ```
-
+Utterance level fusion:
+```
+python run.py --unimodal False --fusion True --attention_2 True
+python run.py --unimodal False --fusion True --attention_2 True
+```
 Note: 
 1. Keeping the unimodal flag as True (default False) shall train all unimodal lstms first (level 1 of the network mentioned in the paper)
 2. Setting --fusion True applies only to multimodal network.
