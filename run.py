@@ -434,7 +434,7 @@ if __name__ == "__main__":
     # with open('unimodal.pickle', 'rb') as handle:
     #     unimodal_activations = pickle.load(handle)
 
-    with open('unimodal.pickle', 'rb') as handle:
+    with open('unimodal-mosi.pickle', 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
         unimodal_activations = u.load()
