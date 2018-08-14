@@ -22,6 +22,7 @@ class LSTM_Model():
         self.lstm_dropout = tf.placeholder(tf.float32, name="lstm_dropout")
         self.dropout = tf.placeholder(tf.float32, name="dropout")
         self.lstm_inp_dropout = tf.placeholder(tf.float32, name="lstm_inp_dropout")
+        self.dropout_lstm_out = tf.placeholder(tf.float32, name="dropout_lstm_out")
         self.attn_2 = enable_attn_2
 
         # Build the model
@@ -208,25 +209,26 @@ class LSTM_Model():
             else:
                 input = tf.concat([self.a_input, self.v_input, self.t_input], axis=-1)
 
-        input = Dropout(self.lstm_inp_dropout)(input)
-        gru_output = self.BiGRU(input, 300, 'gru', 1 - self.lstm_dropout)
-        inter = Dropout(self.dropout)(gru_output)
+        #input = tf.nn.dropout(input, 1-self.lstm_inp_dropout)
+        self.gru_output = self.BiGRU(input, 100, 'gru', 1 - self.lstm_dropout)
+        self.inter = tf.nn.dropout(self.gru_output, 1-self.dropout_lstm_out)
+        #self.inter = self.gru_output
         if self.attn_2:
-            inter = self.self_attention_2(inter, '')
-        init = tf.random_normal_initializer(seed=self.seed, dtype=tf.float32)
+            self.inter = self.self_attention_2(self.inter, '')
+        init = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
         if self.unimodal:
             self.inter1 = Dense(100, activation=tf.nn.tanh,
-                                kernel_initializer=init)(
-                inter)
+                                kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
+                self.inter)
         else:
-            self.inter1 = Dense(500, activation=tf.nn.relu,
-                                kernel_initializer=init)(
-                inter)
-        inter = Dropout(self.dropout)(self.inter1)
-        self.output = Dense(self.emotions, kernel_initializer=init)(inter)
+            self.inter1 = Dense(200, activation=tf.nn.relu,
+                                kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
+                self.inter)
+        self.inter1 = self.inter1 * tf.expand_dims(self.mask, axis=-1)
+        self.inter1 = tf.nn.dropout(self.inter1, 1-self.dropout)
+        self.output = Dense(self.emotions, kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(self.inter1)
         # print('self.output', self.output.get_shape())
         self.preds = tf.nn.softmax(self.output)
-
         # To calculate the number correct, we want to count padded steps as incorrect
         correct = tf.cast(
             tf.equal(tf.argmax(self.preds, -1, output_type=tf.int32), tf.argmax(self.y, -1, output_type=tf.int32)),
@@ -235,9 +237,9 @@ class LSTM_Model():
         # To calculate accuracy we want to divide by the number of non-padded time-steps,
         # rather than taking the mean
         self.accuracy = tf.reduce_sum(tf.cast(correct, tf.float32)) / tf.reduce_sum(tf.cast(self.seq_len, tf.float32))
-        y = tf.argmax(self.y, -1)
+        #y = tf.argmax(self.y, -1)
 
-        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.output, labels=y)
+        loss = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.output, labels=self.y)
         loss = loss * self.mask
 
         self.loss = tf.reduce_sum(loss) / tf.reduce_sum(self.mask)

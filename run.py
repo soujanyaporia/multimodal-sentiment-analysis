@@ -161,7 +161,7 @@ def multimodal(unimodal_activations, attn_fusion=True, enable_attn_2=False):
             tf.set_random_seed(seed)
             sess = tf.Session(config=session_conf)
             with sess.as_default():
-                model = LSTM_Model(text_train.shape[1:], 0.001, emotions=emotions, attn_fusion=attn_fusion,
+                model = LSTM_Model(text_train.shape[1:], 0.0001, emotions=emotions, attn_fusion=attn_fusion,
                                    unimodal=False, enable_attn_2=enable_attn_2,
                                    seed=seed)
                 sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
@@ -175,7 +175,8 @@ def multimodal(unimodal_activations, attn_fusion=True, enable_attn_2=False):
                     model.mask: test_mask,
                     model.lstm_dropout: 0.0,
                     model.lstm_inp_dropout: 0.0,
-                    model.dropout: 0.0
+                    model.dropout: 0.0,
+                    model.dropout_lstm_out: 0.0
                 }
 
                 # print('\n\nDataset: %s' % (data))
@@ -208,9 +209,10 @@ def multimodal(unimodal_activations, attn_fusion=True, enable_attn_2=False):
                             model.y: b_train_label,
                             model.seq_len: b_seqlen_train,
                             model.mask: b_train_mask,
-                            model.lstm_dropout: 0.6,
-                            model.lstm_inp_dropout: 0.4,
-                            model.dropout: 0.9
+                            model.lstm_dropout: 0.4,
+                            model.lstm_inp_dropout: 0.0,
+                            model.dropout: 0.2,
+                            model.dropout_lstm_out: 0.2
                         }
 
                         _, step, loss, accuracy = sess.run(
