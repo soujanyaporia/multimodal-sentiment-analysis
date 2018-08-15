@@ -74,4 +74,6 @@ month={Nov},}
 
 ### Credits
 
-Soujanya Poria, Gangeshwar Krishnamurthy
+Soujanya Poria
+
+Gangeshwar Krishnamurthy (gangeshwark@gmail.com) (Github: @gangeshwark)
