@@ -72,4 +72,4 @@ month={Nov},}
 
 ### Credits
 
-Soujanya Poria, Gangeshwar Krishnamurthy, Devamanyu Hazarika
+Soujanya Poria, Gangeshwar Krishnamurthy
