@@ -2,6 +2,7 @@ import tensorflow as tf
 
 from tensorflow.python.layers.core import Dropout, Dense
 
+from sklearn.metrics import f1_score
 
 class LSTM_Model():
     def __init__(self, input_shape, lr, emotions, attn_fusion=True, unimodal=False, enable_attn_2=False, seed=1234):
@@ -265,6 +266,14 @@ class LSTM_Model():
             self.inter1 = Dense(200, activation=tf.nn.relu,
                                 kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
                 self.inter)
+            self.inter1 = self.inter1 * tf.expand_dims(self.mask, axis=-1)
+            self.inter1 = Dense(200, activation=tf.nn.relu,
+                                kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
+                self.inter1)
+            self.inter1 = self.inter1 * tf.expand_dims(self.mask, axis=-1)
+            self.inter1 = Dense(200, activation=tf.nn.relu,
+                                kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
+                self.inter1)
         self.inter1 = self.inter1 * tf.expand_dims(self.mask, axis=-1)
         self.inter1 = tf.nn.dropout(self.inter1, 1-self.dropout)
         self.output = Dense(self.emotions, kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(self.inter1)
