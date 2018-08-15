@@ -23,27 +23,36 @@ unimodal_activations = {}
 
 def get_raw_data(data, classes):
     mode = 'audio'
-    with open('./dataset/{0}/{1}_{2}way.pickle'.format(data, mode, classes), 'rb') as handle:
+    with open('./dataset/{0}/raw/{1}_{2}way.pickle'.format(data, mode, classes), 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
-        # (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
-        # a = u.load()
-        # print(a)
-        (audio_train, train_label, audio_test, test_label, _, train_length, test_length) = u.load()
+        if data == 'mosi':
+            (audio_train, train_label, audio_test, test_label, _, train_length, test_length) = u.load()
+        elif data == 'mosei':
+            (audio_train, train_label, _, _, audio_test, test_label, _, train_length, _, test_length, _, _, _) = u.load()
+            print(test_label.shape)
 
     mode = 'text'
-    with open('./dataset/{0}/{1}_{2}way.pickle'.format(data, mode, classes), 'rb') as handle:
+    with open('./dataset/{0}/raw/{1}_{2}way.pickle'.format(data, mode, classes), 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
-        # (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
-        (text_train, train_label, text_test, test_label, _, train_length, test_length) = u.load()
+        if data == 'mosi':
+            (text_train, train_label, text_test, test_label, _, train_length, test_length) = u.load()
+        elif data == 'mosei':
+            (text_train, train_label, _, _, text_test, test_label, _, train_length, _, test_length, _, _, _) = u.load()
+            print(test_label.shape)
 
     mode = 'video'
-    with open('./dataset/{0}/{1}_{2}way.pickle'.format(data, mode, classes), 'rb') as handle:
+    with open('./dataset/{0}/raw/{1}_{2}way.pickle'.format(data, mode, classes), 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
-        # (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
-        (video_train, train_label, video_test, test_label, _, train_length, test_length) = u.load()
+        if data == 'mosi':
+            (video_train, train_label, video_test, test_label, _, train_length, test_length) = u.load()
+        elif data == 'mosei':
+            (video_train, train_label, _, _, video_test, test_label, _, train_length, _, test_length, _, _, _) = u.load()
+            print(test_label.shape)
+
+
 
     print('audio_train', audio_train.shape)
     print('audio_test', audio_test.shape)
@@ -63,7 +72,8 @@ def get_raw_data(data, classes):
     for i in range(len(test_length)):
         test_mask[i, :test_length[i]] = 1.0
 
-    train_label, test_label = createOneHot(train_label, test_label)
+    if data == 'mosi':
+        train_label, test_label = createOneHot(train_label, test_label)
 
     print('train_mask', train_mask.shape)
 
@@ -136,7 +146,7 @@ def multimodal(unimodal_activations, data, classes, attn_fusion=True, enable_att
             sess = tf.Session(config=session_conf)
             with sess.as_default():
                 model = LSTM_Model(text_train.shape[1:], 0.0001, a_dim=a_dim, v_dim=v_dim, t_dim=t_dim,
-                                   emotions=emotions, attn_fusion=attn_fusion,
+                                   emotions=classes, attn_fusion=attn_fusion,
                                    unimodal=False, enable_attn_2=enable_attn_2,
                                    seed=seed)
                 sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
@@ -283,7 +293,7 @@ def unimodal(mode, data, classes):
             tf.set_random_seed(seed)
             sess = tf.Session(config=session_conf)
             with sess.as_default():
-                model = LSTM_Model(train_data.shape[1:], 0.0001, a_dim=0, v_dim=0, t_dim=0, emotions=emotions,
+                model = LSTM_Model(train_data.shape[1:], 0.0001, a_dim=0, v_dim=0, t_dim=0, emotions=classes,
                                    attn_fusion=attn_fusion, unimodal=is_unimodal, seed=seed)
                 sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
 
