@@ -71,9 +71,9 @@ class LSTM_Model():
                                              kernel_initializer=kernel_init, bias_initializer=bias_init)
             fw_cell = tf.contrib.rnn.DropoutWrapper(fw_cell, output_keep_prob=dropout_keep_rate)
 
-            bw_cell = tf.contrib.rnn.GRUCell(output_size, name='gru', reuse=tf.AUTO_REUSE, activation=tf.nn.tanh,
-                                             kernel_initializer=kernel_init, bias_initializer=bias_init)
-            bw_cell = tf.contrib.rnn.DropoutWrapper(bw_cell, output_keep_prob=dropout_keep_rate)
+            #bw_cell = tf.contrib.rnn.GRUCell(output_size, name='gru', reuse=tf.AUTO_REUSE, activation=tf.nn.tanh,
+            #                                 kernel_initializer=kernel_init, bias_initializer=bias_init)
+            #bw_cell = tf.contrib.rnn.DropoutWrapper(bw_cell, output_keep_prob=dropout_keep_rate)
 
             outputs,_ = tf.nn.bidirectional_dynamic_rnn(cell_fw=fw_cell,cell_bw=fw_cell, inputs=inputs, sequence_length=self.seq_len, dtype=tf.float32)
 
@@ -251,7 +251,7 @@ class LSTM_Model():
                 input = tf.concat([self.a_input, self.v_input, self.t_input], axis=-1)
 
         #input = tf.nn.dropout(input, 1-self.lstm_inp_dropout)
-        self.gru_output = self.GRU2(input, 100, 'gru', 1 - self.lstm_dropout)
+        self.gru_output = self.BiGRU(input, 100, 'gru', 1 - self.lstm_dropout)
         self.inter = tf.nn.dropout(self.gru_output, 1-self.dropout_lstm_out)
         #self.inter = self.gru_output
         if self.attn_2:
