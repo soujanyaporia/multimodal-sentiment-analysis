@@ -1,17 +1,17 @@
 import tensorflow as tf
 
-from tensorflow.python.layers.core import Dropout, Dense
+from tensorflow.python.layers.core import Dense
 
-from sklearn.metrics import f1_score
 
 class LSTM_Model():
-    def __init__(self, input_shape, lr, emotions, attn_fusion=True, unimodal=False, enable_attn_2=False, seed=1234):
+    def __init__(self, input_shape, lr, a_dim, v_dim, t_dim, emotions, attn_fusion=True, unimodal=False,
+                 enable_attn_2=False, seed=1234):
         if unimodal:
             self.input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], input_shape[1]))
         else:
-            self.a_input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], input_shape[1]))
-            self.v_input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], input_shape[1]))
-            self.t_input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], input_shape[1]))
+            self.a_input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], a_dim))
+            self.v_input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], v_dim))
+            self.t_input = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0], t_dim))
         self.emotions = emotions
         self.mask = tf.placeholder(dtype=tf.float32, shape=(None, input_shape[0]))
         self.seq_len = tf.placeholder(tf.int32, [None, ], name="seq_len")
@@ -36,11 +36,10 @@ class LSTM_Model():
             bias_init = tf.zeros_initializer()
 
             cell = tf.contrib.rnn.GRUCell(output_size, name='gru', reuse=tf.AUTO_REUSE, activation=tf.nn.tanh,
-                                             kernel_initializer=kernel_init, bias_initializer=bias_init)
+                                          kernel_initializer=kernel_init, bias_initializer=bias_init)
             cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=dropout_keep_rate)
 
-
-            output,_ = tf.nn.dynamic_rnn(cell, inputs, sequence_length=self.seq_len, dtype=tf.float32)
+            output, _ = tf.nn.dynamic_rnn(cell, inputs, sequence_length=self.seq_len, dtype=tf.float32)
 
             return output
 
@@ -62,7 +61,7 @@ class LSTM_Model():
 
             output = tf.concat([output_fw, output_bw], axis=-1)
             return output
-    
+
     def BiGRU(self, inputs, output_size, name, dropout_keep_rate):
         with tf.variable_scope('rnn_' + name, reuse=tf.AUTO_REUSE):
             kernel_init = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
@@ -72,11 +71,12 @@ class LSTM_Model():
                                              kernel_initializer=kernel_init, bias_initializer=bias_init)
             fw_cell = tf.contrib.rnn.DropoutWrapper(fw_cell, output_keep_prob=dropout_keep_rate)
 
-            #bw_cell = tf.contrib.rnn.GRUCell(output_size, name='gru', reuse=tf.AUTO_REUSE, activation=tf.nn.tanh,
+            # bw_cell = tf.contrib.rnn.GRUCell(output_size, name='gru', reuse=tf.AUTO_REUSE, activation=tf.nn.tanh,
             #                                 kernel_initializer=kernel_init, bias_initializer=bias_init)
-            #bw_cell = tf.contrib.rnn.DropoutWrapper(bw_cell, output_keep_prob=dropout_keep_rate)
+            # bw_cell = tf.contrib.rnn.DropoutWrapper(bw_cell, output_keep_prob=dropout_keep_rate)
 
-            outputs,_ = tf.nn.bidirectional_dynamic_rnn(cell_fw=fw_cell,cell_bw=fw_cell, inputs=inputs, sequence_length=self.seq_len, dtype=tf.float32)
+            outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=fw_cell, cell_bw=fw_cell, inputs=inputs,
+                                                         sequence_length=self.seq_len, dtype=tf.float32)
 
             output_fw, output_bw = outputs
             output = tf.concat([output_fw, output_bw], axis=-1)
@@ -101,7 +101,7 @@ class LSTM_Model():
         share_param = True
         hidden_size = inputs.shape[-1].value  # D value - hidden size of the RNN layer
         kernel_init1 = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
-        #kernel_init2 = tf.random_normal_initializer(seed=self.seed, dtype=tf.float32,stddev=0.01)
+        # kernel_init2 = tf.random_normal_initializer(seed=self.seed, dtype=tf.float32,stddev=0.01)
         # bias_init = tf.zeros_initializer()
         dense = Dense(hidden_size, kernel_initializer=kernel_init1)
         if share_param:
@@ -161,13 +161,13 @@ class LSTM_Model():
             # Trainable parameters
             w_omega = params['w_omega']
             b_omega = params['b_omega']
-            #dense_attention_2 = params['dense']
+            # dense_attention_2 = params['dense']
             with tf.variable_scope('v', reuse=tf.AUTO_REUSE):
                 # Applying fully connected layer with non-linear activation to each of the B*T timestamps;
                 #  the shape of `v` is (B,T,D)*(D,A)=(B,T,A), where A=attention_size
-                
+
                 v = tf.tensordot(x_proj, w_omega, axes=1) + b_omega
-                #v  = dense_attention_2(x_proj)
+                # v  = dense_attention_2(x_proj)
 
             # For each of the timestamps its vector of size A from `v` is reduced with `u` vector
             vu = tf.tanh(tf.matmul(v, tf.expand_dims(y_proj, -1), name='vu'))  # (B,T) shape (B T A) * (B A 1) = (B T)
@@ -220,14 +220,14 @@ class LSTM_Model():
         # print(scope_name)
         # inputs = tf.transpose(inputs, [2, 0, 1, 3])
         # dense = Dense(hidden_size)
-        #init1 = tf.random_normal_initializer(seed=self.seed, dtype=tf.float32,stddev=0.01)
+        # init1 = tf.random_normal_initializer(seed=self.seed, dtype=tf.float32,stddev=0.01)
         attention_size = hidden_size
         w_omega = tf.Variable(tf.random_normal([hidden_size, attention_size], stddev=0.01, seed=self.seed))
         b_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.01, seed=self.seed))
-        #dense_attention_2 = Dense(attention_size, activation=None,kernel_initializer=init1,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))
+        # dense_attention_2 = Dense(attention_size, activation=None,kernel_initializer=init1,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))
         params = {'w_omega': w_omega,
                   'b_omega': b_omega,
-                  #'dense': dense_attention_2
+                  # 'dense': dense_attention_2
                   }
         with tf.variable_scope(scope_name, reuse=tf.AUTO_REUSE):
             outputs = []
@@ -251,32 +251,33 @@ class LSTM_Model():
             else:
                 input = tf.concat([self.a_input, self.v_input, self.t_input], axis=-1)
 
-        #input = tf.nn.dropout(input, 1-self.lstm_inp_dropout)
+        # input = tf.nn.dropout(input, 1-self.lstm_inp_dropout)
         self.gru_output = self.BiGRU(input, 100, 'gru', 1 - self.lstm_dropout)
-        self.inter = tf.nn.dropout(self.gru_output, 1-self.dropout_lstm_out)
-        #self.inter = self.gru_output
+        self.inter = tf.nn.dropout(self.gru_output, 1 - self.dropout_lstm_out)
+        # self.inter = self.gru_output
         if self.attn_2:
             self.inter = self.self_attention_2(self.inter, '')
         init = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
         if self.unimodal:
             self.inter1 = Dense(100, activation=tf.nn.tanh,
-                                kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
+                                kernel_initializer=init, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
                 self.inter)
         else:
             self.inter1 = Dense(200, activation=tf.nn.relu,
-                                kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
+                                kernel_initializer=init, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
                 self.inter)
             self.inter1 = self.inter1 * tf.expand_dims(self.mask, axis=-1)
             self.inter1 = Dense(200, activation=tf.nn.relu,
-                                kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
+                                kernel_initializer=init, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
                 self.inter1)
             self.inter1 = self.inter1 * tf.expand_dims(self.mask, axis=-1)
             self.inter1 = Dense(200, activation=tf.nn.relu,
-                                kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
+                                kernel_initializer=init, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(
                 self.inter1)
         self.inter1 = self.inter1 * tf.expand_dims(self.mask, axis=-1)
-        self.inter1 = tf.nn.dropout(self.inter1, 1-self.dropout)
-        self.output = Dense(self.emotions, kernel_initializer=init,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(self.inter1)
+        self.inter1 = tf.nn.dropout(self.inter1, 1 - self.dropout)
+        self.output = Dense(self.emotions, kernel_initializer=init,
+                            kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))(self.inter1)
         # print('self.output', self.output.get_shape())
         self.preds = tf.nn.softmax(self.output)
         # To calculate the number correct, we want to count padded steps as incorrect
@@ -287,7 +288,7 @@ class LSTM_Model():
         # To calculate accuracy we want to divide by the number of non-padded time-steps,
         # rather than taking the mean
         self.accuracy = tf.reduce_sum(tf.cast(correct, tf.float32)) / tf.reduce_sum(tf.cast(self.seq_len, tf.float32))
-        #y = tf.argmax(self.y, -1)
+        # y = tf.argmax(self.y, -1)
 
         loss = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.output, labels=self.y)
         loss = loss * self.mask
