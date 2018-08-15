@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 
-from data_prep import batch_iter, createOneHot
+from data_prep import batch_iter, createOneHot, createOneHotMosei2way
 
 seed = 1234
 
@@ -13,6 +13,8 @@ import tensorflow as tf
 from tqdm import tqdm
 
 from model import LSTM_Model
+
+from sklearn.metrics import f1_score
 
 tf.set_random_seed(seed)
 
@@ -196,13 +198,16 @@ def multimodal(unimodal_activations, data, classes, attn_fusion=True, enable_att
 
                     print("\t \tEpoch {}:, loss {:g}, accuracy {:g}".format(epoch, np.average(l), np.average(a)))
                     # Evaluation after epoch
-                    step, loss, accuracy = sess.run(
-                        [model.global_step, model.loss, model.accuracy],
+                    step, loss, accuracy, preds, y, mask = sess.run(
+                        [model.global_step, model.loss, model.accuracy, model.preds, model.y, model.mask],
                         test_feed_dict)
-                    print("EVAL: After epoch {}: step {}, loss {:g}, acc {:g}".format(epoch, step,
-                                                                                      loss / test_label.shape[0],
-                                                                                      accuracy))
-
+                    f1 = f1_score(np.ndarray.flatten(tf.argmax(y, -1, output_type=tf.int32).eval()),
+                                  np.ndarray.flatten(tf.argmax(preds, -1, output_type=tf.int32).eval()),
+                                  sample_weight=np.ndarray.flatten(tf.cast(mask, tf.int32).eval()), average="weighted")
+                    print("EVAL: After epoch {}: step {}, loss {:g}, acc {:g}, f1 {:g}".format(epoch, step,
+                                                                                               loss / test_label.shape[
+                                                                                                   0],
+                                                                                               accuracy, f1))
                     if accuracy > best_acc:
                         best_epoch = epoch
                         best_acc = accuracy
@@ -224,7 +229,12 @@ def unimodal(mode, data, classes):
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
         # (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
-        (train_data, train_label, _, _, test_data, test_label, _, train_length, _, test_length, _, _, _) = u.load()
+        if data == 'mosei':
+            (train_data, train_label, _, _, test_data, test_label, _, train_length, _, test_length, _, _, _) = u.load()
+            if classes == '2':
+                train_label, test_label = createOneHotMosei2way(train_label, test_label)
+        elif data == 'mosi':
+            (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
 
     # with open('./input/' + mode + '.pickle', 'rb') as handle:
     #     (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = pickle.load(handle)
@@ -417,16 +427,13 @@ if __name__ == "__main__":
             unimodal(mode, args.data, args.classes)
 
         print("Saving unimodal activations")
-        with open('unimodal_{0}_{1}.pickle'.format(args.data, args.classes), 'wb') as handle:
+        with open('unimodal_{0}_{1}way.pickle'.format(args.data, args.classes), 'wb') as handle:
             pickle.dump(unimodal_activations, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    # with open('unimodal.pickle', 'rb') as handle:
-    #     unimodal_activations = pickle.load(handle)
-
-    with open('unimodal_{0}_{1}.pickle'.format(args.data, args.classes), 'rb') as handle:
+    with open('unimodal_{0}_{1}way.pickle'.format(args.data, args.classes), 'rb') as handle:
         u = pickle._Unpickler(handle)
         u.encoding = 'latin1'
         unimodal_activations = u.load()
 
-    epochs = 100
+    epochs = 50
     multimodal(unimodal_activations, args.data, args.classes, args.fusion, args.attention_2, use_raw=args.use_raw)
