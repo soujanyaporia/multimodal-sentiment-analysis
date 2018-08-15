@@ -29,7 +29,21 @@ class LSTM_Model():
         self._build_model_op()
         self._initialize_optimizer()
 
-    def BiGRU(self, inputs, output_size, name, dropout_keep_rate):
+    def GRU(self, inputs, output_size, name, dropout_keep_rate):
+        with tf.variable_scope('rnn_' + name, reuse=tf.AUTO_REUSE):
+            kernel_init = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
+            bias_init = tf.zeros_initializer()
+
+            cell = tf.contrib.rnn.GRUCell(output_size, name='gru', reuse=tf.AUTO_REUSE, activation=tf.nn.tanh,
+                                             kernel_initializer=kernel_init, bias_initializer=bias_init)
+            cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=dropout_keep_rate)
+
+
+            output,_ = tf.nn.dynamic_rnn(cell, inputs, sequence_length=self.seq_len, dtype=tf.float32)
+
+            return output
+
+    def GRU2(self, inputs, output_size, name, dropout_keep_rate):
         with tf.variable_scope('rnn_' + name, reuse=tf.AUTO_REUSE):
             kernel_init = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
             bias_init = tf.zeros_initializer()
@@ -45,6 +59,25 @@ class LSTM_Model():
             output_fw, _ = tf.nn.dynamic_rnn(fw_cell, inputs, sequence_length=self.seq_len, dtype=tf.float32)
             output_bw, _ = tf.nn.dynamic_rnn(bw_cell, inputs, sequence_length=self.seq_len, dtype=tf.float32)
 
+            output = tf.concat([output_fw, output_bw], axis=-1)
+            return output
+    
+    def BiGRU(self, inputs, output_size, name, dropout_keep_rate):
+        with tf.variable_scope('rnn_' + name, reuse=tf.AUTO_REUSE):
+            kernel_init = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
+            bias_init = tf.zeros_initializer()
+
+            fw_cell = tf.contrib.rnn.GRUCell(output_size, name='gru', reuse=tf.AUTO_REUSE, activation=tf.nn.tanh,
+                                             kernel_initializer=kernel_init, bias_initializer=bias_init)
+            fw_cell = tf.contrib.rnn.DropoutWrapper(fw_cell, output_keep_prob=dropout_keep_rate)
+
+            bw_cell = tf.contrib.rnn.GRUCell(output_size, name='gru', reuse=tf.AUTO_REUSE, activation=tf.nn.tanh,
+                                             kernel_initializer=kernel_init, bias_initializer=bias_init)
+            bw_cell = tf.contrib.rnn.DropoutWrapper(bw_cell, output_keep_prob=dropout_keep_rate)
+
+            outputs,_ = tf.nn.bidirectional_dynamic_rnn(cell_fw=fw_cell,cell_bw=fw_cell, inputs=inputs, sequence_length=self.seq_len, dtype=tf.float32)
+
+            output_fw, output_bw = outputs
             output = tf.concat([output_fw, output_bw], axis=-1)
             return output
 
@@ -66,9 +99,10 @@ class LSTM_Model():
         t = inputs.get_shape()[2].value
         share_param = True
         hidden_size = inputs.shape[-1].value  # D value - hidden size of the RNN layer
-        kernel_init = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
+        kernel_init1 = tf.glorot_uniform_initializer(seed=self.seed, dtype=tf.float32)
+        #kernel_init2 = tf.random_normal_initializer(seed=self.seed, dtype=tf.float32,stddev=0.01)
         # bias_init = tf.zeros_initializer()
-        dense = Dense(hidden_size, kernel_initializer=kernel_init)
+        dense = Dense(hidden_size, kernel_initializer=kernel_init1)
         if share_param:
             scope_name = 'self_attn'
         else:
@@ -126,10 +160,13 @@ class LSTM_Model():
             # Trainable parameters
             w_omega = params['w_omega']
             b_omega = params['b_omega']
+            #dense_attention_2 = params['dense']
             with tf.variable_scope('v', reuse=tf.AUTO_REUSE):
                 # Applying fully connected layer with non-linear activation to each of the B*T timestamps;
                 #  the shape of `v` is (B,T,D)*(D,A)=(B,T,A), where A=attention_size
+                
                 v = tf.tensordot(x_proj, w_omega, axes=1) + b_omega
+                #v  = dense_attention_2(x_proj)
 
             # For each of the timestamps its vector of size A from `v` is reduced with `u` vector
             vu = tf.tanh(tf.matmul(v, tf.expand_dims(y_proj, -1), name='vu'))  # (B,T) shape (B T A) * (B A 1) = (B T)
@@ -182,11 +219,15 @@ class LSTM_Model():
         # print(scope_name)
         # inputs = tf.transpose(inputs, [2, 0, 1, 3])
         # dense = Dense(hidden_size)
+        #init1 = tf.random_normal_initializer(seed=self.seed, dtype=tf.float32,stddev=0.01)
         attention_size = hidden_size
         w_omega = tf.Variable(tf.random_normal([hidden_size, attention_size], stddev=0.01, seed=self.seed))
         b_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.01, seed=self.seed))
+        #dense_attention_2 = Dense(attention_size, activation=None,kernel_initializer=init1,kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))
         params = {'w_omega': w_omega,
-                  'b_omega': b_omega}
+                  'b_omega': b_omega,
+                  #'dense': dense_attention_2
+                  }
         with tf.variable_scope(scope_name, reuse=tf.AUTO_REUSE):
             outputs = []
             for x in range(t):
@@ -210,7 +251,7 @@ class LSTM_Model():
                 input = tf.concat([self.a_input, self.v_input, self.t_input], axis=-1)
 
         #input = tf.nn.dropout(input, 1-self.lstm_inp_dropout)
-        self.gru_output = self.BiGRU(input, 100, 'gru', 1 - self.lstm_dropout)
+        self.gru_output = self.GRU2(input, 100, 'gru', 1 - self.lstm_dropout)
         self.inter = tf.nn.dropout(self.gru_output, 1-self.dropout_lstm_out)
         #self.inter = self.gru_output
         if self.attn_2:
