@@ -22,7 +22,9 @@ As data is typically present in utterance format, we combine all the utterances 
 python create_data.py
 ```
 
-Note: This will create speaker independent train and test splits 
+Note: This will create speaker independent train and test splits
+In dataset/mosei, extract the zip into a folder named 'raw'.
+Also, extract 'unimodal_mosei_3way.pickle.zip'
 
 ### Running the model
 
