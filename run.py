@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 
-from data_prep import batch_iter, createOneHot, createOneHotMosei2way
+from data_prep import batch_iter, createOneHotMosei2way, get_raw_data
 
 seed = 1234
 
@@ -18,111 +18,16 @@ from sklearn.metrics import f1_score
 
 tf.set_random_seed(seed)
 
-import keras
-
 unimodal_activations = {}
-
-
-def get_raw_data(data, classes):
-    mode = 'audio'
-    with open('./dataset/{0}/raw/{1}_{2}way.pickle'.format(data, mode, classes), 'rb') as handle:
-        u = pickle._Unpickler(handle)
-        u.encoding = 'latin1'
-        if data == 'mosi':
-            (audio_train, train_label, audio_test, test_label, _, train_length, test_length) = u.load()
-        elif data == 'mosei':
-            (audio_train, train_label, _, _, audio_test, test_label, _, train_length, _, test_length, _, _, _) = u.load()
-            print(test_label.shape)
-
-    mode = 'text'
-    with open('./dataset/{0}/raw/{1}_{2}way.pickle'.format(data, mode, classes), 'rb') as handle:
-        u = pickle._Unpickler(handle)
-        u.encoding = 'latin1'
-        if data == 'mosi':
-            (text_train, train_label, text_test, test_label, _, train_length, test_length) = u.load()
-        elif data == 'mosei':
-            (text_train, train_label, _, _, text_test, test_label, _, train_length, _, test_length, _, _, _) = u.load()
-            print(test_label.shape)
-
-    mode = 'video'
-    with open('./dataset/{0}/raw/{1}_{2}way.pickle'.format(data, mode, classes), 'rb') as handle:
-        u = pickle._Unpickler(handle)
-        u.encoding = 'latin1'
-        if data == 'mosi':
-            (video_train, train_label, video_test, test_label, _, train_length, test_length) = u.load()
-        elif data == 'mosei':
-            (video_train, train_label, _, _, video_test, test_label, _, train_length, _, test_length, _, _, _) = u.load()
-            print(test_label.shape)
-
-def get_raw_data_iemocap(data,classes):
-    videoIDs, videoSpeakers, videoLabels, videoText,videoAudio, videoVisual, videoSentence, trainVid,testVid = pickle.load(open("./dataset/iemocap/raw/IEMOCAP_features_raw.pkl", 'rb'),encoding='latin1')
-    
-    train_data = []
-    test_data = []
-    train_label = []
-    test_label = []
-    train_length = []
-    test_length = []
-    audio_train = []
-    video_train = [] 
-    text_train = []
-    audio_test = []
-    video_test = [] 
-    text_test = []
-    
-    for vid in trainVid:
-        text_train.append(videoText[vid])
-        audio_train.append(videoAudio[vid])
-        video_train.append(videoVisual[vid])
-        train_label.append(videoLabels[vid])
-        train_length.append(len(videoLabels[vid]))
-    for vid in testVid:
-        text_test.append(videoText[vid])
-        audio_test.append(videoAudio[vid])
-        video_test.append(videoVisual[vid])
-        test_label.append(videoLabels[vid])
-        test_length.append(len(videoLabels[vid]))
-
-    text_train = keras.preprocessing.sequence.pad_sequences(text_train,maxlen=110,padding='post',dtype='float32')
-    audio_train = keras.preprocessing.sequence.pad_sequences(audio_train,maxlen=110,padding='post',dtype='float32')
-    video_train = keras.preprocessing.sequence.pad_sequences(video_train,maxlen=110,padding='post',dtype='float32')
-    text_test = keras.preprocessing.sequence.pad_sequences(text_test,maxlen=110,padding='post',dtype='float32')
-    audio_test = keras.preprocessing.sequence.pad_sequences(audio_test,maxlen=110,padding='post',dtype='float32')
-    video_test = keras.preprocessing.sequence.pad_sequences(video_test,maxlen=110,padding='post',dtype='float32')
-
-    train_label = keras.preprocessing.sequence.pad_sequences(train_label,maxlen=110,padding='post',dtype='int32')
-    test_label = keras.preprocessing.sequence.pad_sequences(test_label,maxlen=110,padding='post',dtype='int32')
-
-    train_mask = np.zeros((text_train.shape[0], text_train.shape[1]), dtype='float')
-    for i in range(len(train_length)):
-        train_mask[i,:train_length[i]]=1.0
-
-    test_mask = np.zeros((text_test.shape[0], text_test.shape[1]), dtype='float')
-    for i in range(len(test_length)):
-        test_mask[i,:test_length[i]]=1.0
-
-    train_label, test_label = createOneHot(train_label, test_label)
-
-    train_data = np.concatenate((audio_train, video_train, text_train), axis=-1)
-    test_data = np.concatenate((audio_test, video_test, text_test), axis=-1)
-
-
-    seqlen_train = train_length
-    seqlen_test = test_length
-
-    return train_data, test_data, audio_train, audio_test, text_train, text_test, video_train, video_test, train_label, test_label, seqlen_train, seqlen_test, train_mask, test_mask
 
 
 def multimodal(unimodal_activations, data, classes, attn_fusion=True, enable_attn_2=False, use_raw=True):
     if use_raw:
         if attn_fusion:
             attn_fusion = False
-        if data == 'mosi' or data == 'mosei':
-            train_data, test_data, audio_train, audio_test, text_train, text_test, video_train, video_test, train_label, test_label, seqlen_train, seqlen_test, train_mask, test_mask = get_raw_data(
-                data, classes)
-        elif data == 'iemocap':
-            train_data, test_data, audio_train, audio_test, text_train, text_test, video_train, video_test, train_label, test_label, seqlen_train, seqlen_test, train_mask, test_mask = get_raw_data_iemocap(
-                data, classes)
+
+        train_data, test_data, audio_train, audio_test, text_train, text_test, video_train, video_test, train_label, test_label, seqlen_train, seqlen_test, train_mask, test_mask = get_raw_data(
+            data, classes)
 
     else:
         print("starting multimodal")
@@ -274,7 +179,8 @@ def unimodal(mode, data, classes):
             u.encoding = 'latin1'
             # (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
             if data == 'mosei':
-                (train_data, train_label, _, _, test_data, test_label, _, train_length, _, test_length, _, _, _) = u.load()
+                (train_data, train_label, _, _, test_data, test_label, _, train_length, _, test_length, _, _,
+                 _) = u.load()
                 if classes == '2':
                     train_label, test_label = createOneHotMosei2way(train_label, test_label)
             elif data == 'mosi':
@@ -291,8 +197,8 @@ def unimodal(mode, data, classes):
             for i in range(len(test_length)):
                 test_mask[i, :test_length[i]] = 1.0
     elif data == 'iemocap':
-        train_data, test_data, audio_train, audio_test, text_train, text_test, video_train, video_test, train_label, test_label, seqlen_train, seqlen_test, train_mask, test_mask = get_raw_data_iemocap(
-                data, classes)
+        train_data, test_data, audio_train, audio_test, text_train, text_test, video_train, video_test, train_label, test_label, seqlen_train, seqlen_test, train_mask, test_mask = get_raw_data(
+            data, classes)
         if mode == 'text':
             train_data = text_train
             test_data = text_test
@@ -302,7 +208,6 @@ def unimodal(mode, data, classes):
         elif mode == 'video':
             train_video = video_train
             test_video = video_test
-
 
     # train_label, test_label = createOneHotMosei3way(train_label, test_label)
 
@@ -473,9 +378,7 @@ if __name__ == "__main__":
     assert args.data in ['mosi', 'mosei', 'iemocap']
 
     if args.unimodal:
-
         print("Training unimodals first")
-
         modality = ['text', 'audio', 'video']
         for mode in modality:
             unimodal(mode, args.data, args.classes)
