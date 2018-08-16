@@ -203,11 +203,11 @@ def unimodal(mode, data, classes):
             train_data = text_train
             test_data = text_test
         elif mode == 'audio':
-            train_audio = audio_train
-            test_audio = audio_test
+            train_data = audio_train
+            test_data = audio_test
         elif mode == 'video':
-            train_video = video_train
-            test_video = video_test
+            train_data = video_train
+            test_data = video_test
 
     # train_label, test_label = createOneHotMosei3way(train_label, test_label)
 
