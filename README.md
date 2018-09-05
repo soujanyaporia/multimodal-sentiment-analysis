@@ -45,10 +45,23 @@ Utterance level fusion:
 python run.py --unimodal False --fusion True --attention_2 True
 python run.py --unimodal False --fusion True --attention_2 True
 ```
-Note: 
+Note:
 1. Keeping the unimodal flag as True (default False) shall train all unimodal lstms first (level 1 of the network mentioned in the paper)
 2. Setting --fusion True applies only to multimodal network.
 
+### Datasets:
+We test our models on 3 datasets currently. (Adding more soon)
+
+Use ```--data [mosi|mosei|iemocap] and --classes [2|3|6]``` in the above commands to test different configurations on different datasets.
+
+mosi: 2 classes<br>
+mosei: 3 classes<br>
+iemocap: 6 classes<br>
+
+Example: 
+```
+python run.py --unimodal False --fusion True --attention_2 True --data mosei --classes 3
+```
 
 ### Citation 
 
@@ -74,6 +87,6 @@ month={Nov},}
 
 ### Credits
 
-Soujanya Poria
+[Soujanya Poria](http://sporia.info/)
 
-Gangeshwar Krishnamurthy (gangeshwark@gmail.com) (Github: @gangeshwark)
+[Gangeshwar Krishnamurthy](http://www.gangeshwark.com/) (gangeshwark@gmail.com; Github: @gangeshwark)
