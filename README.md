@@ -113,13 +113,13 @@ Video: dataset/mosei/raw/video_3way.pickle <br>
 The file contains:
 train_data, train_label, test_data, test_label, maxlen, train_length, test_length
 
-train_data - np.array of dim (2250, 98, feature_dim)
-train_label - np.array of dim (62, 63, 2)
-test_data - np.array of dim (31, 63, feature_dim)
-test_label - np.array of dim (31, 63, 2)
-maxlen - max utterance length  int of value 63
-train_length - utterance length of each video in train data.
-test_length - utterance length of each video in test data.
+train_data - np.array of dim (2250, 98, feature_dim) <br>
+train_label - np.array of dim (62, 63, 2) <br>
+test_data - np.array of dim (31, 63, feature_dim) <br>
+test_label - np.array of dim (31, 63, 2) <br>
+maxlen - max utterance length  int of value 98 <br>
+train_length - utterance length of each video in train data. <br>
+test_length - utterance length of each video in test data. <br>
 
 Train/Test split: 2250/678 videos. Each video has utterances. The videos are padded to 98 utterances.
 
