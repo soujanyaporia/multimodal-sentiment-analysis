@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 
-from data_prep import batch_iter, createOneHotMosei2way, get_raw_data
+from data_prep import batch_iter, createOneHotMosei2way, get_raw_data, createOneHot
 
 seed = 1234
 
@@ -185,6 +185,11 @@ def unimodal(mode, data, classes):
                     train_label, test_label = createOneHotMosei2way(train_label, test_label)
             elif data == 'mosi':
                 (train_data, train_label, test_data, test_label, maxlen, train_length, test_length) = u.load()
+                train_label = train_label.astype('int')
+                test_label = test_label.astype('int')
+                train_label, test_label = createOneHot(train_label, test_label)
+            else:
+                raise NotImplementedError('Unknown dataset...')
 
             train_label = train_label.astype('int')
             test_label = test_label.astype('int')
