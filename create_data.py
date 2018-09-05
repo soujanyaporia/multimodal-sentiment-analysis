@@ -3,7 +3,12 @@ from collections import defaultdict
 import pickle
 from sklearn import preprocessing
 min_max_scaler = preprocessing.MinMaxScaler()
+"""
+UPDATE:
+This file is obsolete. Please do not use this.
+The pre-processed datasets have already been provided in the dataset/ folder in the repo. Use them directly.
 
+"""
 
 
 
