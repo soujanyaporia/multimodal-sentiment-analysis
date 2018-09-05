@@ -392,10 +392,11 @@ if __name__ == "__main__":
         with open('unimodal_{0}_{1}way.pickle'.format(args.data, args.classes), 'wb') as handle:
             pickle.dump(unimodal_activations, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    with open('unimodal_{0}_{1}way.pickle'.format(args.data, args.classes), 'rb') as handle:
-        u = pickle._Unpickler(handle)
-        u.encoding = 'latin1'
-        unimodal_activations = u.load()
+    if not args.use_raw:
+        with open('unimodal_{0}_{1}way.pickle'.format(args.data, args.classes), 'rb') as handle:
+            u = pickle._Unpickler(handle)
+            u.encoding = 'latin1'
+            unimodal_activations = u.load()
 
     epochs = 50
     multimodal(unimodal_activations, args.data, args.classes, args.fusion, args.attention_2, use_raw=args.use_raw)
