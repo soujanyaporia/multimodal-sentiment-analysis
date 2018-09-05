@@ -10,11 +10,6 @@ Code for the paper
 ![Alt text](atlstm3.jpg?raw=true "The attention based fusion mechanism (ICDM 2017)")
 
 
-### Dataset
-We provide results on the [MOSI dataset](https://arxiv.org/pdf/1606.06259.pdf)  
-Please cite the creators 
-
-
 ### Preprocessing
 As data is typically present in utterance format, we combine all the utterances belonging to a video using the following code
 
@@ -50,7 +45,10 @@ Note:
 2. Setting --fusion True applies only to multimodal network.
 
 ### Datasets:
-We test our models on 3 datasets currently. (Adding more soon)
+We provide results on the [MOSI](https://arxiv.org/pdf/1606.06259.pdf), [MOSEI ](http://aclweb.org/anthology/P18-1208) and [IEMOCAP](https://sail.usc.edu/iemocap/) datasets.<br>
+Please cite the creators.
+
+We are adding more datasets, stay tuned.
 
 Use ```--data [mosi|mosei|iemocap] and --classes [2|3|6]``` in the above commands to test different configurations on different datasets.
 
