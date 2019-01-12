@@ -27,12 +27,12 @@ Also, extract 'unimodal_mosei_3way.pickle.zip'
 
 Sample command:
 
-With fusion:
+With attention-based fusion:
 ```
 python run.py --unimodal True --fusion True
 python run.py --unimodal False --fusion True
 ```
-Without attention-based fusion:
+Without attention-based and with concatenation-based fusion:
 ```
 python run.py --unimodal True --fusion False
 python run.py --unimodal False --fusion False
