@@ -37,7 +37,7 @@ Without attention-based fusion:
 python run.py --unimodal True --fusion False
 python run.py --unimodal False --fusion False
 ```
-Utterance level fusion:
+Utterance level attention:
 ```
 python run.py --unimodal False --fusion True --attention_2 True
 python run.py --unimodal False --fusion True --attention_2 True
