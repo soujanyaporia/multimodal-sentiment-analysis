@@ -104,7 +104,7 @@ We use this data to create a speaker independent train and test splits in the fo
 Train/Test split: 120/31 videos. Each video has utterances. The videos are padded to 110 utterances.
 
 ##### MOSEI:
-3 classes: happy/sad/neutral/angry/excited/frustrated <br>
+3 classes: positive/negative/neutral <br>
 Raw Features: (Pickle files) <br>
 Audio: dataset/mosei/raw/audio_3way.pickle <br>
 Text: dataset/mosei/raw/text_3way.pickle <br>
