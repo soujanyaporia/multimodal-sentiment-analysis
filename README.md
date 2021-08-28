@@ -1,3 +1,5 @@
+# 🔥 🔥 🔥 Notice: This repository will no longer be maintained. Instead, we are are moving all our multimodal works to this new centralized repository: [https://github.com/declare-lab/multimodal-deep-learning](https://github.com/declare-lab/multimodal-deep-learning). 
+
 # Attention-based multimodal fusion for sentiment analysis
 Attention-based multimodal fusion for sentiment analysis
 
